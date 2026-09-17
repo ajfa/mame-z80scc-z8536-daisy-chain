@@ -1,0 +1,61 @@
+--- a/src/devices/machine/z80scc.cpp
++++ b/src/devices/machine/z80scc.cpp
+@@ -2508,6 +2508,12 @@
+ 
+ 	check_dma_request();
+ 
++	/* A character has just been loaded into the transmit buffer, so a preceding
++	   "Reset Tx Int Pending" command no longer applies: that command only suppresses
++	   transmit interrupts "until after the next character has been loaded into the
++	   transmit buffer". */
++	m_tx_int_disarm = 0;
++
+ 	/* Transmitter enabled?  */
+ 	if (m_wr5 & WR5_TX_ENABLE)
+ 	{
+--- a/src/devices/machine/z8536.cpp
++++ b/src/devices/machine/z8536.cpp
+@@ -248,10 +248,14 @@
+ 		state = ASSERT_LINE;
+ 	}
+ 
+-	if (m_irq != state)
++	// The under-service level gates everything further down the daisy chain, so a
++	// change there has to be published even when our own request line does not move.
++	if (m_irq != state || m_ius_level != ius_level)
+ 	{
+-		LOG("%s CIO Interrupt: %u\n", machine().describe_context(), state);
++		if (m_irq != state)
++			LOG("%s CIO Interrupt: %u\n", machine().describe_context(), state);
+ 		m_irq = state;
++		m_ius_level = ius_level;
+ 		m_write_irq(state);
+ 	}
+ }
+@@ -954,7 +958,7 @@
+ 	m_write_pb(*this),
+ 	m_read_pc(*this, 0),
+ 	m_write_pc(*this),
+-	m_irq(CLEAR_LINE)
++	m_irq(CLEAR_LINE), m_ius_level(-1)
+ {
+ }
+ 
+@@ -1000,6 +1004,7 @@
+ 	m_timer->adjust(attotime::from_hz(clock() / 2), 0, attotime::from_hz(clock() / 2));
+ 
+ 	save_item(NAME(m_irq));
++	save_item(NAME(m_ius_level));
+ 	save_item(NAME(m_register));
+ 	save_item(NAME(m_input));
+ 	save_item(NAME(m_output));
+--- a/src/devices/machine/z8536.h
++++ b/src/devices/machine/z8536.h
+@@ -411,6 +411,7 @@
+ 
+ 	// interrupt state
+ 	int m_irq;
++	int m_ius_level;    // interrupt under service level, gates the daisy chain
+ 
+ 	// register state
+ 	u8 m_register[48];
