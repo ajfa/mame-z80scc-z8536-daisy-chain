@@ -39,6 +39,14 @@ look necessary and are not.
 Measuring fixes one at a time means turning the others off: the CIO one looked
 unnecessary until it was the only one left.
 
+## This is in MAME already
+
+Submitted as [mame#15937](https://github.com/mamedev/mame/pull/15937) and merged
+on 24 August 2026. One thing came out of the review: the new under-service level
+is emulated device state and has to go in `save_item` beside the interrupt line,
+which the merged version does. The patch is kept here for the record and for
+trees older than that.
+
 ## Layout
 
     patches/z80scc-z8536-daisy-chain.patch   against MAME 0.289
